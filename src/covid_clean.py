@@ -40,6 +40,7 @@ def clean_timeline(timeline: pd.DataFrame):
     timeline["year"] = [int(y) for y in timeline["year"]]
     timeline["relevant"] = [int(y) for y in timeline["relevant"]]
     timeline = convert_dates(timeline)
+    timeline = timeline.loc[:, timeline.columns != "year"]
 
     return timeline
 

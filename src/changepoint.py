@@ -52,7 +52,6 @@ def emotions_dict(df: pd.DataFrame, emotion_col: str, labels: List[str]):
 
 def write_model_df(df: pd.DataFrame, 
                    change_locations: List[int], 
-                   out_path: str,
                    emotion_col: Optional[str] = 'emo_prob',
                    labels: Optional[List[str]]=[
                           "Glæde/Sindsro",
@@ -62,7 +61,8 @@ def write_model_df(df: pd.DataFrame,
                           "Vrede/Irritation",
                           "Foragt/Modvilje",
                           "Sorg/trist",
-                          "Frygt/Bekymret"]
+                          "Frygt/Bekymret"],
+                    out_path: str=None
                     ):
     '''
     writes df for making the linear models. The df contains columns for the number of changepoint,
@@ -88,14 +88,16 @@ def write_model_df(df: pd.DataFrame,
         tmp_dict = {'change_point': n}
         tmp_df = df.iloc[i:j]
         # get information signals
-        for col in ['resonance', 'novelty', 'transience']:
+        for col in ['date','resonance', 'novelty', 'transience']:
             tmp_dict[col] = tmp_df[col]
         # get emotion values
         emo_dict = emotions_dict(tmp_df, emotion_col, labels)
         # concat with dataframe
         tmp = pd.DataFrame.from_dict({**tmp_dict, **emo_dict})
         model_df = pd.concat([model_df,tmp])
-    model_df.to_csv(out_path)
+    if out_path:
+        model_df.to_csv(out_path)
+    return model_df
 
 
 if __name__=='__main__':
