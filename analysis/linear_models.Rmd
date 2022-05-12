@@ -1,0 +1,150 @@
+# Linear models 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# install.packages('pacman')
+library(pacman)
+pacman::p_load(
+    tidyverse, 
+    lmerTest
+)
+
+```
+
+## Data
+```{r}
+df <- read_csv("data/model_df.csv") %>% 
+        mutate(change_point = change_point + 1)  # making the first changepoint 1 instead of 0
+```
+
+## Explore and Visualize
+```{r}
+df %>% group_by(change_point) %>%
+    summarize(n(), mean(resonance), sd(resonance))
+```
+
+```{r}
+ggplot(data = df, aes(x = happiness, y = resonance)) + 
+    geom_point() +
+    geom_smooth(method = lm) + 
+    facet_wrap(.~change_point)
+```
+
+```{r}
+ggplot(data = df, aes(x = novelty, y = resonance)) + 
+    geom_point(alpha=0.5) +
+    geom_smooth(method = lm) + 
+    facet_wrap(.~change_point) + 
+    theme_bw()
+```
+
+## Models
+
+### Emotions
+resonance ~ all emotions
+```{r}
+model <- lm(resonance ~ happiness + 
+                        trust + 
+                        expectation + 
+                        surprised +
+                        anger +
+                        contempt +
+                        grief +
+                        fear, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(resonance ~ happiness + 
+                            trust + 
+                            expectation + 
+                            surprised +
+                            anger +
+                            contempt +
+                            grief +
+                            fear, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
+resonance ~ happiness + expectation
+```{r}
+model <- lm(resonance ~ happiness + expectation, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(resonance ~ happiness + expectation, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
+### Covid events
+
+Events from the SSI timeline
+```{r}
+model <- lm(resonance ~ epidemiological + policy + other, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    if (n == 1) next  # skip first changepoint
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(resonance ~ epidemiological + policy + other, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
+Number of new cases
+```{r}
+model <- lm(resonance ~ new_cases_MA7, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    if (n == 1) next  # skip first changepoint
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(resonance ~ new_cases_MA7, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
+### Resonance Novelty slope
+```{r}
+model <- lm(resonance ~ novelty, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(resonance ~ novelty, data=df_changepoint)
+
+    print(summary(model))
+}
+```
