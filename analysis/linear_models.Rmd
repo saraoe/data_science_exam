@@ -6,7 +6,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(pacman)
 pacman::p_load(
     tidyverse, 
-    lmerTest
+    lmerTest,
+    patchwork
 )
 
 ```
@@ -14,7 +15,20 @@ pacman::p_load(
 ## Data
 ```{r}
 df <- read_csv("data/model_df.csv") %>% 
-        mutate(change_point = change_point + 1)  # making the first changepoint 1 instead of 0
+        mutate(change_point = change_point + 1,  # making the first changepoint 1 instead of 0
+               event = ifelse(epidemiological==1 | policy==1 | other==1, 1, 0),
+               # z-score scaling
+               zresonance = scale(resonance),
+               znovelty = scale(novelty),
+               zhappiness = scale(happiness), 
+               ztrust = scale(trust),
+               zexpectation = scale(expectation),
+               zsurprised = scale(surprised),
+               zanger = scale(anger),
+               zcontempt = scale(contempt), 
+               zgrief = scale(grief), 
+               zfear = scale(fear)
+               )  
 ```
 
 ## Explore and Visualize
@@ -33,12 +47,65 @@ ggplot(data = df, aes(x = happiness, y = resonance)) +
 ```{r}
 ggplot(data = df, aes(x = novelty, y = resonance)) + 
     geom_point(alpha=0.5) +
-    geom_smooth(method = lm) + 
+    geom_smooth(method = lm, color='firebrick') + 
     facet_wrap(.~change_point) + 
-    theme_bw()
+    theme_light()
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    df_changepoint <- df %>% filter(change_point==n)
+    tmp_p <- ggplot(data = df_changepoint, aes(x = novelty, y = resonance)) + 
+        geom_point(alpha=0.5) +
+        geom_smooth(method = lm, color='firebrick') +  
+        theme_light() + labs(title = n)
+    eval(parse(text=paste('p_', n, ' <- tmp_p', sep='')))
+}
+
+(p_1 + p_2) / (p_3 + p_4)
+```
+
+```{r}
+qs = c(0.03, 0.25, 0.5, 0.75, 0.97)
+
+df2 <- df %>% group_by(change_point) %>%
+    summarize(
+              res_q = quantile(resonance, qs), 
+              q = qs
+              )
+
+df2_lower <- df2 %>% filter(q == min(qs))
+df2_upper <- df2 %>% filter(q == max(qs))
+
+ggplot(data = df) + 
+    geom_density(aes(x = resonance), color='firebrick') +
+    geom_vline(data = df2_lower, mapping = aes(xintercept = res_q),
+               linetype = "longdash", alpha = 0.5) + 
+    geom_vline(data = df2_upper, mapping = aes(xintercept = res_q),
+               linetype = "longdash", alpha = 0.5) + 
+    facet_wrap(.~change_point) + 
+    theme_light()
 ```
 
 ## Models
+
+### Resonance Novelty slope
+```{r}
+model <- lm(zresonance ~ znovelty, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(zresonance ~ znovelty, data=df_changepoint)
+
+    print(summary(model))
+}
+```
 
 ### Emotions
 resonance ~ all emotions
@@ -51,6 +118,19 @@ model <- lm(resonance ~ happiness +
                         contempt +
                         grief +
                         fear, data=df)
+
+print(summary(model))
+```
+
+```{r}
+model <- lm(zresonance ~ zhappiness + 
+                        ztrust + 
+                        zexpectation + 
+                        zsurprised +
+                        zanger +
+                        zcontempt +
+                        zgrief +
+                        zfear, data=df)
 
 print(summary(model))
 ```
@@ -91,6 +171,17 @@ for (n in unique(df$change_point)){
 }
 ```
 
+```{r}
+for (n in unique(df$change_point)){
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(zresonance ~ zhappiness + zexpectation, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
 ### Covid events
 
 Events from the SSI timeline
@@ -106,7 +197,19 @@ for (n in unique(df$change_point)){
     print(paste('CHANGE POINT =', n))
     df_changepoint <- df %>% filter(change_point==n)
 
-    model <- lm(resonance ~ epidemiological + policy + other, data=df_changepoint)
+    model <- lm(zresonance ~ epidemiological + policy + other, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    if (n == 1) next  # skip first changepoint
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(zresonance ~ event, data=df_changepoint)
 
     print(summary(model))
 }
@@ -125,25 +228,7 @@ for (n in unique(df$change_point)){
     print(paste('CHANGE POINT =', n))
     df_changepoint <- df %>% filter(change_point==n)
 
-    model <- lm(resonance ~ new_cases_MA7, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
-### Resonance Novelty slope
-```{r}
-model <- lm(resonance ~ novelty, data=df)
-
-print(summary(model))
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(resonance ~ novelty, data=df_changepoint)
+    model <- lm(zresonance ~ new_cases_MA7, data=df_changepoint)
 
     print(summary(model))
 }
