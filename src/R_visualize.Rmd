@@ -1,0 +1,86 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# install.packages('pacman')
+library(pacman)
+pacman::p_load(
+    tidyverse
+)
+
+```
+
+Loading the data
+```{r}
+df <- read_csv("data_science_exam/data/model_df.csv") %>% 
+        mutate(change_point = change_point + 1)  # making the first changepoint 1 instead of 0
+```
+
+```{r}
+head(df)
+```
+
+Preparing datecolumn
+```{r}
+df <- df %>% mutate(date = as.Date(date))
+```
+
+Prepare things for plots
+```{r}
+relevant <- df %>% subset(relevant==1)
+fontsize <- 20
+colors = c("#03722A", "#2F6FBC", "#B11E03", "#853F9C")
+
+```
+
+Define functions
+```{r}
+get_text_position <- function(change_point){
+    y = 0.0055
+    print(y)
+    if (change_point == 1){
+        x = as.Date("2019-07-01")
+    }
+    else if (change_point == 2){
+        x = as.Date("2020-07-01")
+    }
+    else if (change_point == 3){
+        x = as.Date("2021-01-01")
+        # y = 0.008
+    }
+    else if (change_point == 4){
+        x = as.Date("2021-03-01")
+    }
+    return(c(x, y))
+}
+
+get_point_y <- function(df, x, signal="resonance"){
+    signal_value = df[df$date==x,signal][[1]]
+    if (signal_value >= 0 ){
+        text_value = signal_value+0.0004
+    }
+    else if (signal_value < 0){
+        text_value = signal_value-0.0006
+    }
+    return(c(signal_value, text_value))
+}
+```
+
+```{r}
+as.numeric(get_text_position(2)[2])
+```
+
+```{r}
+df %>% ggplot(aes(date, resonance))+
+    geom_line()+
+    theme_bw()+
+    labs(x="Date", y = "Resonance")+
+    theme(axis.text = element_text(size=12),
+          axis.title = element_text(size=14))
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
