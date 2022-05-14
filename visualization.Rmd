@@ -1,0 +1,181 @@
+---
+title: "Vis"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# install.packages('pacman')
+library(pacman)
+pacman::p_load(
+    tidyverse,
+    scales,
+    lubridate
+)
+
+```
+
+Loading the data
+```{r}
+df <- read_csv("data/model_df.csv") %>% 
+        mutate(change_point = change_point + 1)  # making the first changepoint 1 instead of 0
+```
+
+```{r}
+head(df)
+```
+
+Preparing datecolumn
+```{r}
+df <- df %>% mutate(date = as.Date(date))
+```
+
+Define function
+```{r}
+get_text_position <- function(change_point){
+    y = 0.0055
+    if (change_point == 1){
+        x = as.Date("2019-07-01")
+    }
+    else if (change_point == 2){
+        x = as.Date("2020-07-01")
+    }
+    else if (change_point == 3){
+        x = as.Date("2021-01-01")
+        y = 0.008
+    }
+    else if (change_point == 4){
+        x = as.Date("2021-03-13")
+    }
+    return(c(x, y))
+}
+```
+
+
+Prepare dfs for coloring background by change point and adding text
+```{r}
+# Remove if they exist before loop
+rm(color_df)
+rm(text_df)
+
+###########################################
+# Background color and change point title #
+###########################################
+
+for (point in unique(df$change_point)){ # Loop over change points
+  # Subset from df
+  sub = df %>% subset(change_point == point)
+  # Get text position x and y
+  positions = get_text_position(point)
+  
+  # Df for background color
+  temp_col <- tibble(start = min(sub$date)-1,
+                 end = max(sub$date),
+                 change_point = point)
+
+  # Df for change point title text
+  temp_text <- tibble(x_pos = positions[1],
+                      y_pos = as.numeric(positions[2]),
+                      text = paste("Change point", point, sep = " "),
+                      change_point=point)
+  
+  # Bind
+  if (exists('color_df')){color_df <- rbind(color_df, temp_col)} else {color_df <- temp_col}
+  if (exists('text_df')){text_df <- rbind(text_df, temp_text)} else {text_df <- temp_text}
+}
+# Make background go all the way 
+color_df$start[1] = -Inf
+color_df$end[4] = Inf
+
+# Remove temporary dfs from environment
+rm(temp_col, temp_text)
+
+######################################################
+# All relevant events and every other for annotation #
+######################################################
+
+# Subset plot with only relevant events, then creating df with numbers for annotation
+relevant <- df %>% subset(relevant==1) %>% mutate(change_point=as.factor(change_point))
+
+# Create df for event number annotation
+half_relevant <- relevant %>% 
+  mutate(n_event = seq(1, length(date), 1)) %>% 
+  slice(which(row_number() %% 2 == 1)) %>% 
+  select(c(date, resonance, change_point, n_event)) %>% 
+  mutate(y_pos = ifelse(resonance>=0, resonance+0.0008, resonance-0.0008),
+         date = ifelse(n_event!=3, as.Date(date), as.Date(date)-4)) %>% 
+  mutate(date= as.Date(date, origin="1970-01-01"))
+
+```
+
+Defining colors
+```{r}
+# This should be: color1,    color2,    color3,    color4
+fill_colors = c("#006AFF", "#FF4B00", "#6F00FF", "#FF9800")
+
+# This should be: color1,   color2,    color3,    color4,   color2,    color3,    color4
+col_colors = c("#006AFF", "#FF4B00", "#6F00FF", "#FF9800", "#FF4B00", "#6F00FF", "#FF9800")
+```
+
+
+Actually plot
+```{r}
+ggplot()+
+    # Resonance signal
+    geom_line(data=df, 
+              aes(date, resonance), 
+              size=0.4)+
+
+    # Background
+    geom_rect(data = color_df,
+              aes(xmin=as.Date(start),
+                  xmax=as.Date(end),
+                  ymin=-Inf,
+                  ymax=Inf,
+                  fill = as.factor(change_point)),
+              alpha=0.1)+
+    
+    # Change point text
+    geom_text(data=text_df,
+              aes(x=x_pos, 
+                  y=y_pos, 
+                  label=text, 
+                  color=as.factor(change_point)), 
+              size = 4,
+              family="serif")+
+
+    # Event points
+    geom_point(data=relevant,
+               aes(x=date,
+                   y=resonance,
+                   color=change_point),
+               alpha=0.3,
+               size = 3)+
+    
+    # Text for event points
+    geom_text(data=half_relevant,
+              aes(x=date, 
+                  y=y_pos,
+                  color=as.factor(change_point),
+                  label=n_event),
+              size=3.5,
+              family="serif")+
+
+
+    # Color and axis setup
+    scale_fill_manual(values=fill_colors)+
+    scale_color_manual(values=col_colors)+
+    scale_x_date(breaks = floor_date(seq(min(df$date), max(df$date), by = 'quarter'), unit = "quarter"),
+                 labels = date_format('%b-%Y'))+
+    
+    # Text size, font, axis labels and remove legend
+    theme_bw()+
+    labs(x="Date", y = "Resonance", title = "Resonance signal with change points and most important events")+
+    theme(axis.text = element_text(size=11),
+          axis.title = element_text(size=15),
+          text = element_text(family = "serif"),
+          legend.position = "none")
+
+
+ggsave("test_plot.png", width=12, height=5)
+```
+

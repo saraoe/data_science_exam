@@ -1,5 +1,7 @@
 # Data Science exam
-Exam project for Data Science S22. Stine Nyhus Larsen &amp; Sara Møller Østergaard.
+Exam project for Data Science S22 by Stine Nyhus Larsen &amp; Sara Møller Østergaard.
+
+The work in this project relies on findings from a previous project done by the same authors. Code for the previous project can be found in the [emoDynamics repository](https://github.com/saraoe/emoDynamics).
 
 ## Project Organization
 The organization of the project is as follows:
