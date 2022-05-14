@@ -102,18 +102,21 @@ half_relevant <- relevant %>%
   slice(which(row_number() %% 2 == 1)) %>% 
   select(c(date, resonance, change_point, n_event)) %>% 
   mutate(y_pos = ifelse(resonance>=0, resonance+0.0008, resonance-0.0008),
-         date = ifelse(n_event!=3, as.Date(date), as.Date(date)-4)) %>% 
+         date = ifelse(n_event==3, as.Date(date)-4,ifelse(n_event==11, as.Date(date)+4, as.Date(date)) )) %>% 
   mutate(date= as.Date(date, origin="1970-01-01"))
 
 ```
 
 Defining colors
 ```{r}
-# This should be: color1,    color2,    color3,    color4
-fill_colors = c("#006AFF", "#FF4B00", "#6F00FF", "#FF9800")
+color1 = "#2D5FCE"
+color2 = "#B15310"
+color3 = "#008CFF"
+color4 = "#FF9800"
 
-# This should be: color1,   color2,    color3,    color4,   color2,    color3,    color4
-col_colors = c("#006AFF", "#FF4B00", "#6F00FF", "#FF9800", "#FF4B00", "#6F00FF", "#FF9800")
+fill_colors= c(color1, color2, color3, color4)
+col_colors = c(color1, color2, color3, color4, color2, color3, color4)
+
 ```
 
 
