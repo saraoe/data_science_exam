@@ -34,7 +34,7 @@ df <- read_csv("data/model_df.csv") %>%
 ## Explore and Visualize
 ```{r}
 df %>% group_by(change_point) %>%
-    summarize(n(), mean(resonance), sd(resonance))
+    summarize(n(), mean(resonance), sd(resonance), max(date), min(date))
 ```
 
 ```{r}
@@ -57,7 +57,7 @@ for (n in unique(df$change_point)){
     df_changepoint <- df %>% filter(change_point==n)
     tmp_p <- ggplot(data = df_changepoint, aes(x = novelty, y = resonance)) + 
         geom_point(alpha=0.5) +
-        geom_smooth(method = lm, color='firebrick') +  
+        geom_smooth(method = lm, color='steelblue') +  
         theme_light() + labs(title = n)
     eval(parse(text=paste('p_', n, ' <- tmp_p', sep='')))
 }
@@ -77,14 +77,30 @@ df2 <- df %>% group_by(change_point) %>%
 df2_lower <- df2 %>% filter(q == min(qs))
 df2_upper <- df2 %>% filter(q == max(qs))
 
+df2 <- data.frame(
+    change_point = df2_lower$change_point,
+    res_lower = df2_lower$res_q,
+    res_upper = df2_upper$res_q
+)
+
 ggplot(data = df) + 
-    geom_density(aes(x = resonance), color='firebrick') +
-    geom_vline(data = df2_lower, mapping = aes(xintercept = res_q),
-               linetype = "longdash", alpha = 0.5) + 
-    geom_vline(data = df2_upper, mapping = aes(xintercept = res_q),
-               linetype = "longdash", alpha = 0.5) + 
+    geom_density(aes(x = resonance), color='steelblue') +
+    # geom_vline(data = df2_lower, mapping = aes(xintercept = res_q),
+    #            linetype = "longdash", alpha = 0.5) + 
+    # geom_vline(data = df2_upper, mapping = aes(xintercept = res_q),
+    #            linetype = "longdash", alpha = 0.5) + 
+    geom_text(data=df2_lower, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=50),  
+                                #  angle=90, 
+                                hjust = 'outward'
+                                ) +
+    geom_text(data=df2_upper, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=50),  
+                                #  angle=90, 
+                                hjust = 'outward'
+                                ) +
+    geom_segment(data = df2, mapping = aes(x=res_lower,xend=res_upper,y=0,yend=0), size=0.7) +
     facet_wrap(.~change_point) + 
-    theme_light()
+    labs(y='Density', x = 'Resonance') +
+    theme_bw() + theme(strip.background =element_rect(fill="white"))
 ```
 
 ## Models
