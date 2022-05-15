@@ -53,9 +53,9 @@ get_text_position <- function(change_point){
 
 Prepare dfs for coloring background by change point and adding text
 ```{r}
-# Remove if they exist before loop
-rm(color_df)
-rm(text_df)
+# # Remove if they exist before loop
+# rm(color_df)
+# rm(text_df)
 
 ###########################################
 # Background color and change point title #
@@ -111,7 +111,7 @@ Defining colors
 ```{r}
 color1 = "#2D5FCE"
 color2 = "#B15310"
-color3 = "#008CFF"
+color3 = "#7AA3FC"
 color4 = "#FF9800"
 
 fill_colors= c(color1, color2, color3, color4)
@@ -179,6 +179,6 @@ ggplot()+
           legend.position = "none")
 
 
-ggsave("test_plot.png", width=12, height=5)
+ggsave("test_plot.png", width=8, height=5)
 ```
 
