@@ -33,9 +33,15 @@ if __name__ =="__main__":
     timeline = covid_clean.get_dummies(timeline, cols_to_dummy=["type", "nationality"])
 
     ## Combining cynamics and timeline
-    dynamics_timeline = dynamics_df_w_change.merge(timeline, how="left", on="date")
-    for col in ["relevant", "epidemiological", "other", "policy", "danish", "international"]:
-        dynamics_timeline[col] = [0 if np.isnan(x) else int(x) for x in dynamics_timeline[col]]
+    dates = list(dynamics_df_w_change['date'])
+    for col in ["epidemiological", "other", "policy", "danish", "international"]:
+        tmp = []
+        for date in dynamics_df_w_change['date']:
+            if any(timeline[timeline['date']==date][col]):
+                tmp.append(1)
+            else:
+                tmp.append(0)
+        dynamics_df_w_change[col] = tmp
 
     ### Loading n cases
     owid_path = os.path.join("data", "covid_events", "owid-covid-data.csv")
@@ -44,7 +50,7 @@ if __name__ =="__main__":
     owid['new_cases_MA7'] = owid['new_cases'].rolling(window=7).mean()
 
     ## Combing woid with dynamics and timeline
-    global_df = dynamics_timeline.merge(owid[["date","new_cases", "new_cases_MA7"]], how="left", on="date")
+    global_df = dynamics_df_w_change.merge(owid[["date","new_cases", "new_cases_MA7"]], how="left", on="date")
     
     out_path = os.path.join("data", "model_df.csv")
     global_df.to_csv(out_path)
