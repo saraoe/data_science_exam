@@ -16,18 +16,22 @@ pacman::p_load(
 
 Loading the data
 ```{r}
-df <- read_csv("data/model_df.csv") %>% 
+df <- read_csv("data_science_exam/data/model_df.csv") %>% 
         mutate(change_point = change_point + 1)  # making the first changepoint 1 instead of 0
 ```
 
-```{r}
-head(df)
-```
 
 Preparing datecolumn
 ```{r}
 df <- df %>% mutate(date = as.Date(date))
 ```
+
+```{r}
+head(df)
+df %>% group_by(change_point) %>% summarise(min_date = min(date),
+                                             max_date = max(date))
+```
+
 
 Define function
 ```{r}
@@ -54,8 +58,8 @@ get_text_position <- function(change_point){
 Prepare dfs for coloring background by change point and adding text
 ```{r}
 # # Remove if they exist before loop
-# rm(color_df)
-# rm(text_df)
+rm(color_df)
+rm(text_df)
 
 ###########################################
 # Background color and change point title #
@@ -120,9 +124,9 @@ col_colors = c(color1, color2, color3, color4, color2, color3, color4)
 ```
 
 
-Actually plot
+# Resonance signal with changepoint periods and events
 ```{r}
-ggplot()+
+plot<-ggplot()+
     # Resonance signal
     geom_line(data=df, 
               aes(date, resonance), 
@@ -179,6 +183,68 @@ ggplot()+
           legend.position = "none")
 
 
-ggsave("test_plot.png", width=8, height=5)
+ggsave("data_science_exam/fig/resonance_cp_events.png", plot, width=8, height=5)
 ```
 
+
+# Correlation in change point windows
+```{r}
+labels = c('happiness',
+            'trust',
+            'expectation',
+            'surprised',
+            'anger',
+            'contempt',
+            'grief',
+            'fear')
+```
+
+
+
+```{r}
+p_load(reshape2, patchwork)
+for (cp in unique(df$change_point)){
+    emos = df %>% subset(change_point == cp) %>% select(labels)
+    corr_mat = melt(round(cor(emos),3))
+    
+    plot <- corr_mat %>% ggplot(aes(Var1, Var2, fill=value))+
+                            geom_tile(color="White")+
+                            scale_fill_gradient2(low="#234FAF",
+                                                 high="#D75038", 
+                                                 mid="#F4F0FF",
+                                                 limit=c(-1,1),
+                                                 midpoint=0,
+                                                 name="")+
+                            geom_text(aes(Var1, Var2, label = value), color = "black", size = 2) +
+                            labs(title=paste("Change point period", cp))+
+                            theme(axis.text.x = element_text(angle=20, hjust=1, size = 7),
+                                  axis.text.y = element_text(size = 7),
+                                  axis.title.x = element_blank(),
+                                  axis.title.y = element_blank(),
+                                  panel.grid.major = element_blank(),
+                                  panel.border = element_blank(),
+                                  panel.background = element_blank(),
+                                #   axis.ticks = element_blank(),
+                                  plot.title=element_text(size=8),
+                                  text=element_text(family="serif", size=9))+
+                            coord_fixed()
+    eval(parse(text=paste('p_', cp, ' <- plot', sep='')))
+    ggsave(paste("data_science_exam/fig/corr_mat_cp_", cp, ".png", sep = ""), plot, width=6, height=6)
+}
+patch = p_1 + p_2 + p_3 + p_4
+patch
+better_patch <- (patch & theme(legend.position = "right")) + plot_layout(guides = "collect")
+better_patch
+
+ggsave("data_science_exam/fig/corr_mat.png", better_patch, width=7, height=7)
+```
+
+
+for cp in df["change_point"].unique():
+    emos = df[df["change_point"]==cp][labels] # ["date", "change_point"]+
+    corr_mat = emos.corr()
+    sns.heatmap(corr_mat, annot=True, cmap="coolwarm", vmin=-1, vmax=1)
+    plt.title(f'Correlation matrix in change point period {cp+1}', fontdict={"size":14})
+    plt.xticks(rotation=20, ha="right")
+    plt.show()
+    # print(corr_mat.head())
