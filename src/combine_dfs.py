@@ -6,7 +6,6 @@ import pandas as pd
 import changepoint
 import covid_clean
 import os
-import numpy as np
 
 if __name__ =="__main__":
     ### Loading information dynamics and raw emotions
@@ -32,7 +31,7 @@ if __name__ =="__main__":
     timeline = covid_clean.clean_timeline(timeline)
     timeline = covid_clean.get_dummies(timeline, cols_to_dummy=["type", "nationality"])
 
-    ## Combining cynamics and timeline
+    ## Combining dynamics and timeline
     dates = list(dynamics_df_w_change['date'])
     for col in ["epidemiological", "other", "policy", "danish", "international"]:
         tmp = []
@@ -49,8 +48,14 @@ if __name__ =="__main__":
     owid = owid[owid['location']=='Denmark']
     owid['new_cases_MA7'] = owid['new_cases'].rolling(window=7).mean()
 
-    ## Combing woid with dynamics and timeline
+    ## Combing owid with dynamics and timeline
     global_df = dynamics_df_w_change.merge(owid[["date","new_cases", "new_cases_MA7"]], how="left", on="date")
+
+    # Combining with n_tweets
+    n_tweets_path = os.path.join("data", "covid_events", "n_tweets.csv")
+    n_tweets = pd.read_csv(n_tweets_path, index_col=0)
+    global_df = global_df.merge(n_tweets[["date", "n_all_tweets", "n_keyword_tweets", "proportion_keyword_tweets"]],
+                                how='left', on='date')
     
     out_path = os.path.join("data", "model_df.csv")
     global_df.to_csv(out_path)
