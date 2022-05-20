@@ -154,7 +154,7 @@ def merge_df_owid_cases(df: pd.DataFrame, owid: pd.DataFrame, n_tweets: pd.DataF
 
 if __name__ =="__main__":
     ### Loading information dynamics and raw emotions
-    dynamics_model_path = os.path.join("/home", "stine", "data_science_exam", "data", "idmdl", "tweets_emo_date_W3.csv")
+    dynamics_model_path = os.path.join("..", "data", "idmdl", "tweets_emo_date_W3.csv")
     df = pd.read_csv(dynamics_model_path)
     labels = [
         'happiness',
