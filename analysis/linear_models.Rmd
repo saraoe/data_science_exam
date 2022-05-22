@@ -14,7 +14,7 @@ pacman::p_load(
 ## Data
 ```{r}
 df <- read_csv("data/model_df.csv") %>% 
-        mutate(change_point = change_point + 1,  # making the first changepoint 1 instead of 0
+        mutate(
                event = ifelse(epidemiological==1 | policy==1 | other==1, 1, 0),
                # z-score scaling
                zresonance = scale(resonance),
@@ -26,11 +26,14 @@ df <- read_csv("data/model_df.csv") %>%
                zanger = scale(anger),
                zcontempt = scale(contempt), 
                zgrief = scale(grief), 
-               zfear = scale(fear)
+               zfear = scale(fear),
+               zn_all_tweets = scale(n_all_tweets),
+               zn_keyword_tweets = scale(n_keyword_tweets),
+               zproportion_keyword_tweets = scale(proportion_keyword_tweets)
                )  
 ```
 
-## Explore and Visualize
+## Explore data
 ```{r}
 df %>% group_by(change_point) %>%
     summarize(n(), mean(resonance), sd(resonance), max(date), min(date))
@@ -57,11 +60,20 @@ for (n in unique(df$change_point)){
     tmp_p <- ggplot(data = df_changepoint, aes(x = novelty, y = resonance)) + 
         geom_point(alpha=0.5) +
         geom_smooth(method = lm, color='steelblue') +  
-        theme_light() + labs(title = n)
+        labs(title = paste("Change point period", n, sep = " "),
+             x = "Novelty",
+             y = "Resonance") +
+        theme_bw() + 
+        theme(text = element_text(family = "serif"),
+              axis.text = element_text(size=11),
+              axis.title = element_text(size=12),
+              plot.title = element_text(size=15))
     eval(parse(text=paste('p_', n, ' <- tmp_p', sep='')))
 }
 
-(p_1 + p_2) / (p_3 + p_4)
+patch <- (p_1 + p_2) / (p_3 + p_4)
+patch
+# ggsave("fig/rn_slopes.png", patch, width=8, height=8)
 ```
 
 ```{r}
@@ -82,24 +94,34 @@ df2 <- data.frame(
     res_upper = df2_upper$res_q
 )
 
-ggplot(data = df) + 
-    geom_density(aes(x = resonance), color='steelblue') +
+p <- ggplot(data = df) + 
+    geom_density(aes(x = resonance), color='steelblue', size=1) +
     # geom_vline(data = df2_lower, mapping = aes(xintercept = res_q),
     #            linetype = "longdash", alpha = 0.5) + 
     # geom_vline(data = df2_upper, mapping = aes(xintercept = res_q),
     #            linetype = "longdash", alpha = 0.5) + 
-    geom_text(data=df2_lower, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=50),  
+    geom_text(data=df2_lower, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=60),  
                                 #  angle=90, 
-                                hjust = 'outward'
+                                hjust = 'outward',
+                                family = "serif",
+                                size = 5
                                 ) +
-    geom_text(data=df2_upper, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=50),  
+    geom_text(data=df2_upper, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=60),  
                                 #  angle=90, 
-                                hjust = 'outward'
+                                hjust = 'inward',
+                                family = "serif",
+                                size = 5
                                 ) +
-    geom_segment(data = df2, mapping = aes(x=res_lower,xend=res_upper,y=0,yend=0), size=0.7) +
+    geom_segment(data = df2, mapping = aes(x=res_lower,xend=res_upper,y=0,yend=0), size=1) +
     facet_wrap(.~change_point) + 
     labs(y='Density', x = 'Resonance') +
-    theme_bw() + theme(strip.background =element_rect(fill="white"))
+    theme_bw() + 
+    theme(strip.background =element_rect(fill="white"),
+          axis.text = element_text(size=12),
+          axis.title = element_text(size=15),
+          strip.text.x = element_text(size = 15),
+          text = element_text(family = "serif"))
+ggsave("fig/res_density.png", p, width=8, height=8)
 ```
 
 ## Models
@@ -117,26 +139,18 @@ for (n in unique(df$change_point)){
     df_changepoint <- df %>% filter(change_point==n)
 
     model <- lm(zresonance ~ znovelty, data=df_changepoint)
-
-    print(summary(model))
+    model_summary <- summary(model)
+    estimate <- model_summary$coefficients[2,1]
+    confidence_int <- model_summary$coefficients[2,2]*1.96
+    print(model_summary)
+    print(paste("estimate: ", estimate, 
+                " [", estimate-confidence_int, ",", estimate+confidence_int, "]",
+                sep=""))
 }
 ```
 
 ### Emotions
 resonance ~ all emotions
-```{r}
-model <- lm(resonance ~ happiness + 
-                        trust + 
-                        expectation + 
-                        surprised +
-                        anger +
-                        contempt +
-                        grief +
-                        fear, data=df)
-
-print(summary(model))
-```
-
 ```{r}
 model <- lm(zresonance ~ zhappiness + 
                         ztrust + 
@@ -151,49 +165,40 @@ print(summary(model))
 ```
 
 ```{r}
+labels <- c(
+    "Intercept",
+    "Happiness",
+    "Trust",
+    "Expectation",
+    "Surprised",
+    "Anger",
+    "Contempt",
+    "Grief",
+    "Fear"
+)
 for (n in unique(df$change_point)){
     print(paste('CHANGE POINT =', n))
     df_changepoint <- df %>% filter(change_point==n)
 
-    model <- lm(resonance ~ happiness + 
-                            trust + 
-                            expectation + 
-                            surprised +
-                            anger +
-                            contempt +
-                            grief +
-                            fear, data=df_changepoint)
+    model <- lm(zresonance ~ zhappiness + 
+                            ztrust + 
+                            zexpectation + 
+                            zsurprised +
+                            zanger +
+                            zcontempt +
+                            zgrief +
+                            zfear, data=df_changepoint)
 
-    print(summary(model))
-}
-```
+    model_summary <- summary(model)
+    print(model_summary)
 
-resonance ~ happiness + expectation
-```{r}
-model <- lm(resonance ~ happiness + expectation, data=df)
-
-print(summary(model))
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(resonance ~ happiness + expectation, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(zresonance ~ zhappiness + zexpectation, data=df_changepoint)
-
-    print(summary(model))
+    for (i in 1:9){
+        estimate <- model_summary$coefficients[i,1]
+        confidence_int <- model_summary$coefficients[i,2]*1.96
+        print(paste(labels[i], ": ", round(estimate, 2), 
+                " [", round(estimate-confidence_int, 2), ",", round(estimate+confidence_int, 2), "]",
+                sep=""))
+    }
 }
 ```
 
@@ -248,3 +253,40 @@ for (n in unique(df$change_point)){
     print(summary(model))
 }
 ```
+
+Number of (covid) tweets
+```{r}
+model <- lm(zresonance ~ zn_all_tweets*zn_keyword_tweets, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(zresonance ~ zn_all_tweets*zn_keyword_tweets, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
+```{r}
+model <- lm(n_keyword_tweets ~ new_cases_MA7 + epidemiological + policy + other, data=df)
+
+print(summary(model))
+```
+
+```{r}
+for (n in unique(df$change_point)){
+    if (n == 1) next  # skip first changepoint
+    print(paste('CHANGE POINT =', n))
+    df_changepoint <- df %>% filter(change_point==n)
+
+    model <- lm(n_keyword_tweets ~ new_cases_MA7 + epidemiological + policy + other, data=df_changepoint)
+
+    print(summary(model))
+}
+```
+
