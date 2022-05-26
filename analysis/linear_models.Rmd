@@ -26,10 +26,7 @@ df <- read_csv("data/model_df.csv") %>%
                zanger = scale(anger),
                zcontempt = scale(contempt), 
                zgrief = scale(grief), 
-               zfear = scale(fear),
-               zn_all_tweets = scale(n_all_tweets),
-               zn_keyword_tweets = scale(n_keyword_tweets),
-               zproportion_keyword_tweets = scale(proportion_keyword_tweets)
+               zfear = scale(fear)
                )  
 ```
 
@@ -52,76 +49,6 @@ ggplot(data = df, aes(x = novelty, y = resonance)) +
     geom_smooth(method = lm, color='firebrick') + 
     facet_wrap(.~change_point) + 
     theme_light()
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    df_changepoint <- df %>% filter(change_point==n)
-    tmp_p <- ggplot(data = df_changepoint, aes(x = novelty, y = resonance)) + 
-        geom_point(alpha=0.5) +
-        geom_smooth(method = lm, color='steelblue') +  
-        labs(title = paste("Change point period", n, sep = " "),
-             x = "Novelty",
-             y = "Resonance") +
-        theme_bw() + 
-        theme(text = element_text(family = "serif"),
-              axis.text = element_text(size=11),
-              axis.title = element_text(size=12),
-              plot.title = element_text(size=15))
-    eval(parse(text=paste('p_', n, ' <- tmp_p', sep='')))
-}
-
-patch <- (p_1 + p_2) / (p_3 + p_4)
-patch
-# ggsave("fig/rn_slopes.png", patch, width=8, height=8)
-```
-
-```{r}
-qs = c(0.03, 0.25, 0.5, 0.75, 0.97)
-
-df2 <- df %>% group_by(change_point) %>%
-    summarize(
-              res_q = quantile(resonance, qs), 
-              q = qs
-              )
-
-df2_lower <- df2 %>% filter(q == min(qs))
-df2_upper <- df2 %>% filter(q == max(qs))
-
-df2 <- data.frame(
-    change_point = df2_lower$change_point,
-    res_lower = df2_lower$res_q,
-    res_upper = df2_upper$res_q
-)
-
-p <- ggplot(data = df) + 
-    geom_density(aes(x = resonance), color='steelblue', size=1) +
-    # geom_vline(data = df2_lower, mapping = aes(xintercept = res_q),
-    #            linetype = "longdash", alpha = 0.5) + 
-    # geom_vline(data = df2_upper, mapping = aes(xintercept = res_q),
-    #            linetype = "longdash", alpha = 0.5) + 
-    geom_text(data=df2_lower, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=60),  
-                                #  angle=90, 
-                                hjust = 'outward',
-                                family = "serif",
-                                size = 5
-                                ) +
-    geom_text(data=df2_upper, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=60),  
-                                #  angle=90, 
-                                hjust = 'inward',
-                                family = "serif",
-                                size = 5
-                                ) +
-    geom_segment(data = df2, mapping = aes(x=res_lower,xend=res_upper,y=0,yend=0), size=1) +
-    facet_wrap(.~change_point) + 
-    labs(y='Density', x = 'Resonance') +
-    theme_bw() + 
-    theme(strip.background =element_rect(fill="white"),
-          axis.text = element_text(size=12),
-          axis.title = element_text(size=15),
-          strip.text.x = element_text(size = 15),
-          text = element_text(family = "serif"))
-ggsave("fig/res_density.png", p, width=8, height=8)
 ```
 
 ## Models
@@ -201,92 +128,3 @@ for (n in unique(df$change_point)){
     }
 }
 ```
-
-### Covid events
-
-Events from the SSI timeline
-```{r}
-model <- lm(resonance ~ epidemiological + policy + other, data=df)
-
-print(summary(model))
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    if (n == 1) next  # skip first changepoint
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(zresonance ~ epidemiological + policy + other, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    if (n == 1) next  # skip first changepoint
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(zresonance ~ event, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
-Number of new cases
-```{r}
-model <- lm(resonance ~ new_cases_MA7, data=df)
-
-print(summary(model))
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    if (n == 1) next  # skip first changepoint
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(zresonance ~ new_cases_MA7, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
-Number of (covid) tweets
-```{r}
-model <- lm(zresonance ~ zn_all_tweets*zn_keyword_tweets, data=df)
-
-print(summary(model))
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(zresonance ~ zn_all_tweets*zn_keyword_tweets, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
-```{r}
-model <- lm(n_keyword_tweets ~ new_cases_MA7 + epidemiological + policy + other, data=df)
-
-print(summary(model))
-```
-
-```{r}
-for (n in unique(df$change_point)){
-    if (n == 1) next  # skip first changepoint
-    print(paste('CHANGE POINT =', n))
-    df_changepoint <- df %>% filter(change_point==n)
-
-    model <- lm(n_keyword_tweets ~ new_cases_MA7 + epidemiological + policy + other, data=df_changepoint)
-
-    print(summary(model))
-}
-```
-
