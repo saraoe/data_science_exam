@@ -9,15 +9,16 @@ library(pacman)
 pacman::p_load(
     tidyverse,
     scales,
-    lubridate
+    lubridate,
+    reshape2, 
+    patchwork
 )
 
 ```
 
 Loading the data
 ```{r}
-df <- read_csv("data_science_exam/data/model_df.csv") %>% 
-        mutate(change_point = change_point + 1)  # making the first changepoint 1 instead of 0
+df <- read_csv("data_science_exam/data/model_df.csv")   # making the first changepoint 1 instead of 0
 ```
 
 
@@ -45,7 +46,7 @@ get_text_position <- function(change_point){
     }
     else if (change_point == 3){
         x = as.Date("2021-01-01")
-        y = 0.008
+        y = 0.011
     }
     else if (change_point == 4){
         x = as.Date("2021-03-13")
@@ -79,7 +80,7 @@ for (point in unique(df$change_point)){ # Loop over change points
   # Df for change point title text
   temp_text <- tibble(x_pos = positions[1],
                       y_pos = as.numeric(positions[2]),
-                      text = paste("Change point", point, sep = " "),
+                      text = paste("Change point period", point, sep = " "),
                       change_point=point)
   
   # Bind
@@ -98,31 +99,52 @@ rm(temp_col, temp_text)
 ######################################################
 
 # Subset plot with only relevant events, then creating df with numbers for annotation
-relevant <- df %>% subset(relevant==1) %>% mutate(change_point=as.factor(change_point))
+# relevant <- df %>% subset(relevant==1) %>% mutate(change_point=as.factor(change_point))
 
-# Create df for event number annotation
-half_relevant <- relevant %>% 
-  mutate(n_event = seq(1, length(date), 1)) %>% 
-  slice(which(row_number() %% 2 == 1)) %>% 
-  select(c(date, resonance, change_point, n_event)) %>% 
-  mutate(y_pos = ifelse(resonance>=0, resonance+0.0008, resonance-0.0008),
-         date = ifelse(n_event==3, as.Date(date)-4,ifelse(n_event==11, as.Date(date)+4, as.Date(date)) )) %>% 
-  mutate(date= as.Date(date, origin="1970-01-01"))
+# # Create df for event number annotation
+# half_relevant <- relevant %>% 
+#   mutate(n_event = seq(1, length(date), 1)) %>% 
+#   slice(which(row_number() %% 2 == 1)) %>% 
+#   select(c(date, resonance, change_point, n_event)) %>% 
+#   mutate(y_pos = ifelse(resonance>=0, resonance+0.0008, resonance-0.0008),
+#          date = ifelse(n_event==3, as.Date(date)-4,ifelse(n_event==11, as.Date(date)+4, as.Date(date)) )) %>% 
+#   mutate(date= as.Date(date, origin="1970-01-01"))
+
+######################################
+# Manually define events of interest #
+######################################
+covid_manual <- df %>% 
+    subset(date == "2020-01-30" | # WHO: covid is a threat
+           date == "2020-02-26" | # First DK citizen
+           date == "2020-03-11" | # Lockdown
+           date == "2020-03-17" | # Queen's speech
+           date == "2020-04-20" | # Partial reopening
+           date == "2020-07-31" | # face masks
+           date == "2020-11-04" | # kill the mink
+           date == "2020-12-27" | # First dk vaccination
+           date == "2021-01-28" | # Lockdown prolonged
+           date == "2021-04-14"   # AZ withdrawn
+            ) %>% 
+    mutate(change_point = as.factor(change_point),
+           n_event = seq(1,10),
+           date = ifelse(n_event==9, as.Date(date)+4,ifelse(n_event==10, as.Date(date)-10, as.Date(date))),
+           y_pos= ifelse(resonance>=0, resonance+0.001, resonance-0.0008)) %>%
+    mutate(date= as.Date(date, origin="1970-01-01"))
 
 ```
 
 Defining colors
+
 ```{r}
-color1 = "#2D5FCE"
-color2 = "#B15310"
-color3 = "#7AA3FC"
-color4 = "#FF9800"
+color1 = "#2C76A8"
+color2 = "#4cbbc2" # "#4CC5CB"
+color3 = "#004079"
+color4 = "#008C76FF"
 
 fill_colors= c(color1, color2, color3, color4)
 col_colors = c(color1, color2, color3, color4, color2, color3, color4)
 
 ```
-
 
 # Resonance signal with changepoint periods and events
 ```{r}
@@ -145,29 +167,29 @@ plot<-ggplot()+
     geom_text(data=text_df,
               aes(x=x_pos, 
                   y=y_pos, 
-                  label=text, 
+                  label=str_wrap(text, width = 12), 
                   color=as.factor(change_point)), 
               size = 4,
               family="serif")+
 
     # Event points
-    geom_point(data=relevant,
+    geom_point(data=covid_manual,
                aes(x=date,
-                   y=resonance,
-                   color=change_point),
-               alpha=0.3,
-               size = 3)+
+                   y=resonance), 
+               alpha=0.6,
+               size = 3,
+               color="sienna4")+
     
     # Text for event points
-    geom_text(data=half_relevant,
+    geom_text(data=covid_manual,
               aes(x=date, 
                   y=y_pos,
-                  color=as.factor(change_point),
+                #   color=change_point,
                   label=n_event),
               size=3.5,
-              family="serif")+
-
-
+              family="serif",
+              color="sienna4")+
+    
     # Color and axis setup
     scale_fill_manual(values=fill_colors)+
     scale_color_manual(values=col_colors)+
@@ -176,13 +198,13 @@ plot<-ggplot()+
     
     # Text size, font, axis labels and remove legend
     theme_bw()+
-    labs(x="Date", y = "Resonance", title = "Resonance signal with change points and most important events")+
+    labs(x="Date", y = "Resonance", title = "Resonance, change points and selected events")+
     theme(axis.text = element_text(size=11),
           axis.title = element_text(size=15),
           text = element_text(family = "serif"),
           legend.position = "none")
 
-
+plot
 ggsave("data_science_exam/fig/resonance_cp_events.png", plot, width=8, height=5)
 ```
 
@@ -200,9 +222,8 @@ labels = c('happiness',
 ```
 
 
-
 ```{r}
-p_load(reshape2, patchwork)
+
 for (cp in unique(df$change_point)){
     emos = df %>% subset(change_point == cp) %>% select(labels)
     corr_mat = melt(round(cor(emos),3))
@@ -240,11 +261,74 @@ ggsave("data_science_exam/fig/corr_mat.png", better_patch, width=7, height=7)
 ```
 
 
-for cp in df["change_point"].unique():
-    emos = df[df["change_point"]==cp][labels] # ["date", "change_point"]+
-    corr_mat = emos.corr()
-    sns.heatmap(corr_mat, annot=True, cmap="coolwarm", vmin=-1, vmax=1)
-    plt.title(f'Correlation matrix in change point period {cp+1}', fontdict={"size":14})
-    plt.xticks(rotation=20, ha="right")
-    plt.show()
-    # print(corr_mat.head())
+## Raw emotion distributions
+```{r}
+labels = c('happiness',
+            'trust',
+            'expectation',
+            'surprised',
+            'anger',
+            'contempt',
+            'grief',
+            'fear')
+```
+
+Prepare df in long format
+```{r}
+emos <- df %>% select(c("date", labels))
+emos
+emos_melt <- melt(emos, id=c("date"))
+
+
+```
+
+
+```{r}
+# values = pal_rickandmorty("schwifty")(10)
+# values
+raw_emotions <- emos_melt %>% ggplot(aes(date, value, color=variable))+
+                geom_line()+
+                theme_bw()+
+                # scale_color_brewer("Emotion", palette="Dark2")+
+
+                scale_color_manual("Emotion", values = vals)+
+
+                labs(x="Date", y="Probability")+
+                scale_x_date(
+                labels = date_format('%b-%Y'))+
+                theme(axis.text = element_text(size=11),
+                    axis.title = element_text(size=15),
+                    text = element_text(family = "serif", size=13)
+                    )
+raw_emotions
+ggsave("data_science_exam/fig/raw_emotions.png", raw_emotions, width=8, height=5)
+
+```
+
+
+```{r}
+p_load(ggthemes, permute, scales)
+values = list(tableau_color_pal("Classic 10 Medium")(8))
+vals = c(values[[1]][4], 
+        values[[1]][7], 
+        values[[1]][2], 
+        values[[1]][3], 
+        values[[1]][6], 
+        values[[1]][1], 
+        values[[1]][5], 
+        values[[1]][8])
+class(vals)
+print(vals)
+length(values)
+values[[1]][1]
+print(values)
+print(rev(sort(values[[1]])))
+
+show_col(tableau_color_pal("Classic 10 Medium")(8))
+unique(emos_melt$variable)
+```nt(values)
+print(rev(sort(values[[1]])))
+
+show_col(tableau_color_pal("Classic 10 Medium")(8))
+unique(emos_melt$variable)
+```
