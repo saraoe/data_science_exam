@@ -67,5 +67,3 @@ if __name__ == "__main__":
     timeline = pd.read_excel(open(timeline_path, "rb"), engine='openpyxl')
     timeline = clean_timeline(timeline)
     timeline = get_dummies(timeline)
-
-    print(timeline.head())

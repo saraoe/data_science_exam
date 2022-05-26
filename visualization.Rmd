@@ -27,6 +27,7 @@ Preparing datecolumn
 df <- df %>% mutate(date = as.Date(date))
 ```
 
+See dates in change point windows
 ```{r}
 head(df)
 df %>% group_by(change_point) %>% summarise(min_date = min(date),
@@ -87,6 +88,7 @@ for (point in unique(df$change_point)){ # Loop over change points
   if (exists('color_df')){color_df <- rbind(color_df, temp_col)} else {color_df <- temp_col}
   if (exists('text_df')){text_df <- rbind(text_df, temp_text)} else {text_df <- temp_text}
 }
+
 # Make background go all the way 
 color_df$start[1] = -Inf
 color_df$end[4] = Inf
@@ -94,21 +96,6 @@ color_df$end[4] = Inf
 # Remove temporary dfs from environment
 rm(temp_col, temp_text)
 
-######################################################
-# All relevant events and every other for annotation #
-######################################################
-
-# Subset plot with only relevant events, then creating df with numbers for annotation
-# relevant <- df %>% subset(relevant==1) %>% mutate(change_point=as.factor(change_point))
-
-# # Create df for event number annotation
-# half_relevant <- relevant %>% 
-#   mutate(n_event = seq(1, length(date), 1)) %>% 
-#   slice(which(row_number() %% 2 == 1)) %>% 
-#   select(c(date, resonance, change_point, n_event)) %>% 
-#   mutate(y_pos = ifelse(resonance>=0, resonance+0.0008, resonance-0.0008),
-#          date = ifelse(n_event==3, as.Date(date)-4,ifelse(n_event==11, as.Date(date)+4, as.Date(date)) )) %>% 
-#   mutate(date= as.Date(date, origin="1970-01-01"))
 
 ######################################
 # Manually define events of interest #
@@ -276,23 +263,16 @@ labels = c('happiness',
 Prepare df in long format
 ```{r}
 emos <- df %>% select(c("date", labels))
-emos
 emos_melt <- melt(emos, id=c("date"))
-
 
 ```
 
 
 ```{r}
-# values = pal_rickandmorty("schwifty")(10)
-# values
 raw_emotions <- emos_melt %>% ggplot(aes(date, value, color=variable))+
                 geom_line()+
                 theme_bw()+
-                # scale_color_brewer("Emotion", palette="Dark2")+
-
                 scale_color_manual("Emotion", values = vals)+
-
                 labs(x="Date", y="Probability")+
                 scale_x_date(
                 labels = date_format('%b-%Y'))+
@@ -305,30 +285,3 @@ ggsave("data_science_exam/fig/raw_emotions.png", raw_emotions, width=8, height=5
 
 ```
 
-
-```{r}
-p_load(ggthemes, permute, scales)
-values = list(tableau_color_pal("Classic 10 Medium")(8))
-vals = c(values[[1]][4], 
-        values[[1]][7], 
-        values[[1]][2], 
-        values[[1]][3], 
-        values[[1]][6], 
-        values[[1]][1], 
-        values[[1]][5], 
-        values[[1]][8])
-class(vals)
-print(vals)
-length(values)
-values[[1]][1]
-print(values)
-print(rev(sort(values[[1]])))
-
-show_col(tableau_color_pal("Classic 10 Medium")(8))
-unique(emos_melt$variable)
-```nt(values)
-print(rev(sort(values[[1]])))
-
-show_col(tableau_color_pal("Classic 10 Medium")(8))
-unique(emos_melt$variable)
-```

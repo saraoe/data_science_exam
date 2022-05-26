@@ -7,7 +7,8 @@ import changepoint
 import covid_clean
 import os
 import re
-from typing import List
+from typing import List, Optional
+import argparse
 
 def get_emotion_distribution(emo: str, n: int=8):
     '''
@@ -136,7 +137,7 @@ def load_prepare_owid(path:str,
     owid[f'{average}_MA{window}'] = owid[average].rolling(window=window).mean()
     return owid
 
-def merge_df_owid_cases(df: pd.DataFrame, owid: pd.DataFrame, n_tweets: pd.DataFrame):
+def merge_df_owid_cases(df: pd.DataFrame, owid: pd.DataFrame, n_tweets:Optional[pd.DataFrame]=None):
     '''Merges the three provided dataframes on date
     
     Args:
@@ -147,45 +148,60 @@ def merge_df_owid_cases(df: pd.DataFrame, owid: pd.DataFrame, n_tweets: pd.DataF
     Returns:
         global_df (pd.DataFrame): the merged dataframes
     '''
-    tmp_df = df.merge(owid[["date","new_cases", "new_cases_MA7"]], how="left", on="date")
-    global_df = tmp_df.merge(n_tweets[["date", "n_all_tweets", "n_keyword_tweets", "proportion_keyword_tweets"]],
+    global_df = df.merge(owid[["date","new_cases", "new_cases_MA7"]], how="left", on="date")
+    if n_tweets:
+        global_df = global_df.merge(n_tweets[["date", "n_all_tweets", "n_keyword_tweets", "proportion_keyword_tweets"]],
                                 how='left', on='date')
     return global_df
 
-if __name__ =="__main__":
+def main(dynamics_path, timeline_path, owid_path, penalty, n_tweets_path=None, out_path=None):
     ### Loading information dynamics and raw emotions
-    dynamics_model_path = os.path.join("..", "data", "idmdl", "tweets_emo_date_W3.csv")
-    df = pd.read_csv(dynamics_model_path)
-    labels = [
-        'happiness',
-        'trust',
-        'expectation',
-        'surprised',
-        'anger',
-        'contempt',
-        'grief',
-        'fear'
-    ]
+    df = pd.read_csv(dynamics_path)
 
     ### Find change points and extract emotion probabilities
-    df = find_add_change_points(df)
+    df = find_add_change_points(df, penalty)
     df = add_emotion_probabilities(df)
 
     ### Loading SSI timeline
-    timeline_path = os.path.join("..", "data", "covid_events", "timeline_covid.xlsx")
     timeline = load_prepare_ssi_timeline(timeline_path)
 
     ### Loading n cases
-    owid_path = os.path.join("..", "data", "covid_events", "owid-covid-data.csv")
     owid = load_prepare_owid(owid_path)
 
-    ### Loading n_tweets
-    n_tweets_path = os.path.join("..", "data", "covid_events", "n_tweets.csv")
-    n_tweets = pd.read_csv(n_tweets_path, index_col=0)
+    ### Loading n_tweets if provided
+    if n_tweets_path:
+        n_tweets = pd.read_csv(n_tweets_path, index_col=0)
+    else:
+        n_tweets=None
 
     ### Merging all dfs
     df = merge_dynamics_timeline(df, timeline)
     global_df = merge_df_owid_cases(df, owid, n_tweets)
     
-    out_path = os.path.join("..", "data", "model_df.csv")
-    global_df.to_csv(out_path)
+    if out_path: # Saving if out_path is specified
+        global_df.to_csv(out_path)
+    
+    else:
+        print(f'The combined dataframe has columns {global_df.columns}')
+        print(global_df.head())
+
+if __name__ =="__main__":
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dynamics', type=str, required=True,
+                        help='Path to the csv with information dynamics')
+    parser.add_argument('--timeline', type=str, required=True,
+                        help='Path to the xlsx with SSI timeline')
+    parser.add_argument('--owid', type=str, required=True,
+                        help='Path to the csv with OWID number of cases')
+    parser.add_argument('--penalty', type=float, required=False, default=4,
+                        help='Penalty to use in change point detection')
+    parser.add_argument('--n_tweets', type=str, required=False, default=None,
+                        help='Path to the csv with number of tweets per day, optional')
+    parser.add_argument('--out_path', type=str, required=False, default=None,
+                        help='Path name for saving the df with everything combined')
+    args = parser.parse_args()
+    
+    
+    main(args.dynamics, args.timeline, args.owid, args.penalty, args.n_tweets, args.out_path)
+    
