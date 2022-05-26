@@ -32,6 +32,6 @@ To reproduce the results clone the repository and run the following commands
 pip install -r requirements.txt
 ```
 ```
-python src/combine_dfd.py  --dynamics data/idmdl/tweets_emo_date_W3.csv --timeline data/covid_events/timeline_covid.xlsx --owid data/covid_events/owid-covid-data.csv
+python src/combine_dfs.py  --dynamics data/idmdl/tweets_emo_date_W3.csv --timeline data/covid_events/timeline_covid.xlsx --owid data/covid_events/owid-covid-data.csv
 ```
 To reproduce the analysis of the data run code in ```analysis/linear_models.Rmd``` and to obtain the visualizations run ```analysis/visualizations.Rmd```. 
