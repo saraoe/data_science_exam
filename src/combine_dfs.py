@@ -189,17 +189,17 @@ if __name__ =="__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--dynamics', type=str, required=True,
-                        help='Path to the csv with information dynamics')
+                        help='Path to the csv with information dynamics.')
     parser.add_argument('--timeline', type=str, required=True,
-                        help='Path to the xlsx with SSI timeline')
+                        help='Path to the xlsx with SSI timeline.')
     parser.add_argument('--owid', type=str, required=True,
-                        help='Path to the csv with OWID number of cases')
+                        help='Path to the csv with OWID number of cases.')
     parser.add_argument('--penalty', type=float, required=False, default=4,
-                        help='Penalty to use in change point detection')
+                        help='Penalty to use in change point detection. Default is 4.')
     parser.add_argument('--n_tweets', type=str, required=False, default=None,
-                        help='Path to the csv with number of tweets per day, optional')
+                        help='Path to the csv with number of tweets per day, optional.')
     parser.add_argument('--out_path', type=str, required=False, default=None,
-                        help='Path name for saving the df with everything combined')
+                        help='Path name for saving the df with everything combined, optional.')
     args = parser.parse_args()
     
     
