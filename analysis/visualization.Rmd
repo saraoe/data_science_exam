@@ -1,5 +1,5 @@
 ---
-title: "Vis"
+title: "Visualizations"
 output: html_document
 ---
 ```{r setup, include=FALSE}
@@ -16,9 +16,10 @@ pacman::p_load(
 
 ```
 
+## Data and setup
 Loading the data
 ```{r}
-df <- read_csv("data_science_exam/data/model_df.csv")   # making the first changepoint 1 instead of 0
+df <- read_csv("data/model_df.csv")   # making the first changepoint 1 instead of 0
 ```
 
 
@@ -133,6 +134,29 @@ col_colors = c(color1, color2, color3, color4, color2, color3, color4)
 
 ```
 
+# Raw resonance and novelty
+```{r}
+res_plot <- df %>% ggplot(aes(y=resonance, x=date)) +
+                geom_line(color = "steelblue") +
+                labs(x = "", y = "Resonance") +
+                theme_bw() +
+                theme(text = element_text(family = "serif"),
+                        axis.text = element_text(size=15),
+                        axis.title = element_text(size=18))
+
+nov_plot <- df %>% ggplot(aes(y=novelty, x=date)) +
+                geom_line(color = "steelblue") +
+                labs(x = "Date", y = "Novelty") +
+                theme_bw() +
+                theme(text = element_text(family = "serif"),
+                        axis.text = element_text(size=15),
+                        axis.title = element_text(size=18))
+
+patch <- res_plot / nov_plot
+patch
+# ggsave("fig/res_nov.png", patch, width=8)
+```
+
 # Resonance signal with changepoint periods and events
 ```{r}
 plot<-ggplot()+
@@ -192,9 +216,77 @@ plot<-ggplot()+
           legend.position = "none")
 
 plot
-ggsave("data_science_exam/fig/resonance_cp_events.png", plot, width=8, height=5)
+# ggsave("data_science_exam/fig/resonance_cp_events.png", plot, width=8, height=5)
 ```
 
+# Change point densities
+```{r}
+qs = c(0.03, 0.25, 0.5, 0.75, 0.97)
+
+df2 <- df %>% group_by(change_point) %>%
+    summarize(
+              res_q = quantile(resonance, qs), 
+              q = qs
+              )
+
+df2_lower <- df2 %>% filter(q == min(qs))
+df2_upper <- df2 %>% filter(q == max(qs))
+
+df2 <- data.frame(
+    change_point = df2_lower$change_point,
+    res_lower = df2_lower$res_q,
+    res_upper = df2_upper$res_q
+)
+
+p <- ggplot(data = df) + 
+    geom_density(aes(x = resonance), color='steelblue', size=1) +
+    geom_text(data=df2_lower, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=60),  
+                                #  angle=90, 
+                                hjust = 'outward',
+                                family = "serif",
+                                size = 5
+                                ) +
+    geom_text(data=df2_upper, mapping=aes(x=res_q, label=paste(round(res_q, 3)), y=60),  
+                                #  angle=90, 
+                                hjust = 'inward',
+                                family = "serif",
+                                size = 5
+                                ) +
+    geom_segment(data = df2, mapping = aes(x=res_lower,xend=res_upper,y=0,yend=0), size=1) +
+    facet_wrap(.~change_point) + 
+    labs(y='Density', x = 'Resonance') +
+    theme_bw() + 
+    theme(strip.background =element_rect(fill="white"),
+          axis.text = element_text(size=12),
+          axis.title = element_text(size=15),
+          strip.text.x = element_text(size = 15),
+          text = element_text(family = "serif"))
+p
+# ggsave("fig/res_density.png", p, width=8, height=8)
+```
+
+# Resonance-novelty slope 
+```{r}
+for (n in unique(df$change_point)){
+    df_changepoint <- df %>% filter(change_point==n)
+    tmp_p <- ggplot(data = df_changepoint, aes(x = novelty, y = resonance)) + 
+        geom_point(alpha=0.5) +
+        geom_smooth(method = lm, color='steelblue') +  
+        labs(title = paste("Change point period", n, sep = " "),
+             x = "Novelty",
+             y = "Resonance") +
+        theme_bw() + 
+        theme(text = element_text(family = "serif"),
+              axis.text = element_text(size=11),
+              axis.title = element_text(size=12),
+              plot.title = element_text(size=15))
+    eval(parse(text=paste('p_', n, ' <- tmp_p', sep='')))
+}
+
+patch <- (p_1 + p_2) / (p_3 + p_4)
+patch
+# ggsave("fig/rn_slopes.png", patch, width=8, height=8)
+```
 
 # Correlation in change point windows
 ```{r}
@@ -207,7 +299,6 @@ labels = c('happiness',
             'grief',
             'fear')
 ```
-
 
 ```{r}
 
@@ -237,14 +328,14 @@ for (cp in unique(df$change_point)){
                                   text=element_text(family="serif", size=9))+
                             coord_fixed()
     eval(parse(text=paste('p_', cp, ' <- plot', sep='')))
-    ggsave(paste("data_science_exam/fig/corr_mat_cp_", cp, ".png", sep = ""), plot, width=6, height=6)
+    # ggsave(paste("fig/corr_mat_cp_", cp, ".png", sep = ""), plot, width=6, height=6)
 }
 patch = p_1 + p_2 + p_3 + p_4
 patch
 better_patch <- (patch & theme(legend.position = "right")) + plot_layout(guides = "collect")
 better_patch
 
-ggsave("data_science_exam/fig/corr_mat.png", better_patch, width=7, height=7)
+# ggsave("fig/corr_mat.png", better_patch, width=7, height=7)
 ```
 
 
@@ -281,7 +372,7 @@ raw_emotions <- emos_melt %>% ggplot(aes(date, value, color=variable))+
                     text = element_text(family = "serif", size=13)
                     )
 raw_emotions
-ggsave("data_science_exam/fig/raw_emotions.png", raw_emotions, width=8, height=5)
+# ggsave("fig/raw_emotions.png", raw_emotions, width=8, height=5)
 
 ```
 
