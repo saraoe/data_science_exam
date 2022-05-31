@@ -23,7 +23,7 @@ The organization of the project is as follows:
 ├── analysis
 │   ├── visualization.Rmd
 │   └── linear_model.Rmd
-├── datascience_paper.pdf      <- final paper
+├── datascience_exam.pdf       <- final paper
 ├── README.md                  <- The top-level README for this project.
 └── requirement.txt            <- A requirements file of the required packages.
 ```
