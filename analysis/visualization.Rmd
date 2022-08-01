@@ -335,9 +335,40 @@ patch
 better_patch <- (patch & theme(legend.position = "right")) + plot_layout(guides = "collect")
 better_patch
 
-# ggsave("fig/corr_mat.png", better_patch, width=7, height=7)
+ggsave("fig/corr_mat.png", better_patch, width=7, height=7)
 ```
 
+Christmas 2019
+```{r}
+
+
+emos = df %>% subset(date > '2019-12-19' & date < '2020-01-01') %>% select(labels)
+corr_mat = melt(round(cor(emos),3))
+
+plot <- corr_mat %>% ggplot(aes(Var1, Var2, fill=value))+
+                        geom_tile(color="White")+
+                        scale_fill_gradient2(low="#234FAF",
+                                                high="#D75038", 
+                                                mid="#F4F0FF",
+                                                limit=c(-1,1),
+                                                midpoint=0,
+                                                name="")+
+                        geom_text(aes(Var1, Var2, label = value), color = "black", size = 2) +
+                        labs(title='Christmas 2019')+
+                        theme(axis.text.x = element_text(angle=20, hjust=1, size = 7),
+                                axis.text.y = element_text(size = 7),
+                                axis.title.x = element_blank(),
+                                axis.title.y = element_blank(),
+                                panel.grid.major = element_blank(),
+                                panel.border = element_blank(),
+                                panel.background = element_blank(),
+                            #   axis.ticks = element_blank(),
+                                plot.title=element_text(size=8),
+                                text=element_text(family="serif", size=9))+
+                        coord_fixed()
+
+ggsave("fig/corr_mat_xmas2019.png", plot, width=6, height=6)
+```
 
 ## Raw emotion distributions
 ```{r}
