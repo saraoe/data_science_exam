@@ -29,7 +29,7 @@ def get_emotion_distribution(emo: str):
     """
     For transforming the emotion distribution from a str to a list of floats
     """
-    emo_list = re.sub("[^A-Za-z0-9\s]+", "", emo).split(" ")
+    emo_list = re.sub("[^A-Za-z0-9\s.]+", "", emo).split(" ")
     emo_list = list(map(lambda x: float(x), emo_list))
     return emo_list
 
