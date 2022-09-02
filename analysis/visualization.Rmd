@@ -19,7 +19,9 @@ pacman::p_load(
 ## Data and setup
 Loading the data
 ```{r}
-df <- read_csv("data/model_df.csv")   # making the first changepoint 1 instead of 0
+# df <- read_csv("data/model_df.csv")   # making the first changepoint 1 instead of 0
+df <- read_csv("/home/saram/hope-twitter/emoDynamics/idmdl/tweets_emo_date_W3_changepoints.csv") %>%
+                mutate(change_point=change_point+1)
 ```
 
 
@@ -38,6 +40,26 @@ df %>% group_by(change_point) %>% summarise(min_date = min(date),
 
 Define function
 ```{r}
+# For original signal
+# get_text_position <- function(change_point){
+#     y = 0.0055
+#     if (change_point == 1){
+#         x = as.Date("2019-07-01")
+#     }
+#     else if (change_point == 2){
+#         x = as.Date("2020-07-01")
+#     }
+#     else if (change_point == 3){
+#         x = as.Date("2021-01-01")
+#         y = 0.011
+#     }
+#     else if (change_point == 4){
+#         x = as.Date("2021-03-13")
+#     }
+#     return(c(x, y))
+# }
+
+# For signal including 2022
 get_text_position <- function(change_point){
     y = 0.0055
     if (change_point == 1){
@@ -47,11 +69,18 @@ get_text_position <- function(change_point){
         x = as.Date("2020-07-01")
     }
     else if (change_point == 3){
-        x = as.Date("2021-01-01")
+        x = as.Date("2020-12-28")
         y = 0.011
     }
     else if (change_point == 4){
-        x = as.Date("2021-03-13")
+        x = as.Date("2021-07-01")
+    }
+    else if (change_point == 5){
+        x = as.Date("2021-12-28")
+        y = 0.011
+    }
+    else if (change_point == 6){
+        x = as.Date("2022-04-20")
     }
     return(c(x, y))
 }
@@ -92,7 +121,7 @@ for (point in unique(df$change_point)){ # Loop over change points
 
 # Make background go all the way 
 color_df$start[1] = -Inf
-color_df$end[4] = Inf
+color_df$end[6] = Inf
 
 # Remove temporary dfs from environment
 rm(temp_col, temp_text)
@@ -111,10 +140,16 @@ covid_manual <- df %>%
            date == "2020-11-04" | # kill the mink
            date == "2020-12-27" | # First dk vaccination
            date == "2021-01-28" | # Lockdown prolonged
-           date == "2021-04-14"   # AZ withdrawn
+           date == "2021-04-14" |  # AZ withdrawn
+           date == "2021-05-28" | # Coronapas-app published in App-store
+           date == "2021-07-05" | # delta variant dominat
+           date == "2021-09-01" | # no longer "samfundskritisk sygdom"
+           date == "2021-11-11" | # again "samfundskritisk sygdom"
+           date == "2022-02-01" | # no longer "samfundskritisk sygdom"
+           date == "2022-04-06"  # quick testcenters closes
             ) %>% 
     mutate(change_point = as.factor(change_point),
-           n_event = seq(1,10),
+           n_event = seq(1,16),
            date = ifelse(n_event==9, as.Date(date)+4,ifelse(n_event==10, as.Date(date)-10, as.Date(date))),
            y_pos= ifelse(resonance>=0, resonance+0.001, resonance-0.0008)) %>%
     mutate(date= as.Date(date, origin="1970-01-01"))
@@ -129,8 +164,11 @@ color2 = "#4cbbc2" # "#4CC5CB"
 color3 = "#004079"
 color4 = "#008C76FF"
 
-fill_colors= c(color1, color2, color3, color4)
-col_colors = c(color1, color2, color3, color4, color2, color3, color4)
+# fill_colors= c(color1, color2, color3, color4)
+# col_colors = c(color1, color2, color3, color4, color2, color3, color4)
+
+fill_colors= c(color1, color2, color3, color4, color1, color2)
+col_colors = c(color1, color2, color3, color4, color1, color2, color2, color3, color4)
 
 ```
 
@@ -212,11 +250,12 @@ plot<-ggplot()+
     labs(x="Date", y = "Resonance", title = "Resonance, change points and selected events")+
     theme(axis.text = element_text(size=11),
           axis.title = element_text(size=15),
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
           text = element_text(family = "serif"),
           legend.position = "none")
 
 plot
-# ggsave("data_science_exam/fig/resonance_cp_events.png", plot, width=8, height=5)
+# ggsave("fig/resonance_cp_events_2022.png", plot, width=8, height=5)
 ```
 
 # Change point densities
@@ -283,9 +322,9 @@ for (n in unique(df$change_point)){
     eval(parse(text=paste('p_', n, ' <- tmp_p', sep='')))
 }
 
-patch <- (p_1 + p_2) / (p_3 + p_4)
+patch <- (p_1 + p_2) / (p_3 + p_4) / (p_5 + p_6)
 patch
-# ggsave("fig/rn_slopes.png", patch, width=8, height=8)
+# ggsave("fig/rn_slopes_2022.png", patch, width=8, height=8)
 ```
 
 # Correlation in change point windows
@@ -330,12 +369,12 @@ for (cp in unique(df$change_point)){
     eval(parse(text=paste('p_', cp, ' <- plot', sep='')))
     # ggsave(paste("fig/corr_mat_cp_", cp, ".png", sep = ""), plot, width=6, height=6)
 }
-patch = p_1 + p_2 + p_3 + p_4
+patch = (p_1 + p_2) / (p_3 + p_4) / (p_5 + p_6)
 patch
 better_patch <- (patch & theme(legend.position = "right")) + plot_layout(guides = "collect")
 better_patch
 
-ggsave("fig/corr_mat.png", better_patch, width=7, height=7)
+ggsave("fig/corr_mat_2022.png", better_patch, width=7, height=7)
 ```
 
 Christmas 2019
@@ -368,6 +407,42 @@ plot <- corr_mat %>% ggplot(aes(Var1, Var2, fill=value))+
                         coord_fixed()
 
 ggsave("fig/corr_mat_xmas2019.png", plot, width=6, height=6)
+```
+
+```{r}
+df <- read_csv("/home/saram/hope-twitter/emoDynamics/idmdl/hope_model_df.csv")   # making the first changepoint 1 instead of 0
+```
+
+Christmas 2021
+```{r}
+
+
+emos = df %>% subset(date > '2021-12-20' & date < '2022-01-01') %>% select(labels)
+corr_mat = melt(round(cor(emos),3))
+
+plot <- corr_mat %>% ggplot(aes(Var1, Var2, fill=value))+
+                        geom_tile(color="White")+
+                        scale_fill_gradient2(low="#234FAF",
+                                                high="#D75038", 
+                                                mid="#F4F0FF",
+                                                limit=c(-1,1),
+                                                midpoint=0,
+                                                name="")+
+                        geom_text(aes(Var1, Var2, label = value), color = "black", size = 2) +
+                        labs(title='Christmas 2021')+
+                        theme(axis.text.x = element_text(angle=20, hjust=1, size = 7),
+                                axis.text.y = element_text(size = 7),
+                                axis.title.x = element_blank(),
+                                axis.title.y = element_blank(),
+                                panel.grid.major = element_blank(),
+                                panel.border = element_blank(),
+                                panel.background = element_blank(),
+                            #   axis.ticks = element_blank(),
+                                plot.title=element_text(size=8),
+                                text=element_text(family="serif", size=9))+
+                        coord_fixed()
+
+ggsave("hope-twitter/data_science_exam/fig/corr_mat_xmas2021.png", plot, width=6, height=6)
 ```
 
 ## Raw emotion distributions

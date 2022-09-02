@@ -13,21 +13,36 @@ pacman::p_load(
 
 ## Data
 ```{r}
-df <- read_csv("data/model_df.csv") %>% 
-        mutate(
-               event = ifelse(epidemiological==1 | policy==1 | other==1, 1, 0),
-               # z-score scaling
-               zresonance = scale(resonance),
-               znovelty = scale(novelty),
-               zhappiness = scale(happiness), 
-               ztrust = scale(trust),
-               zexpectation = scale(expectation),
-               zsurprised = scale(surprised),
-               zanger = scale(anger),
-               zcontempt = scale(contempt), 
-               zgrief = scale(grief), 
-               zfear = scale(fear)
-               )  
+# df <- read_csv("data/model_df.csv") %>% 
+#         mutate(
+#                event = ifelse(epidemiological==1 | policy==1 | other==1, 1, 0),
+#                # z-score scaling
+#                zresonance = scale(resonance),
+#                znovelty = scale(novelty),
+#                zhappiness = scale(happiness), 
+#                ztrust = scale(trust),
+#                zexpectation = scale(expectation),
+#                zsurprised = scale(surprised),
+#                zanger = scale(anger),
+#                zcontempt = scale(contempt), 
+#                zgrief = scale(grief), 
+#                zfear = scale(fear)
+#                )  
+df <- read_csv("/home/saram/hope-twitter/emoDynamics/idmdl/tweets_emo_date_W3_changepoints.csv") %>%
+                mutate(
+                    change_point=change_point+1,
+                    # z-score scaling
+                    zresonance = scale(resonance),
+                    znovelty = scale(novelty),
+                    zhappiness = scale(happiness), 
+                    ztrust = scale(trust),
+                    zexpectation = scale(expectation),
+                    zsurprised = scale(surprised),
+                    zanger = scale(anger),
+                    zcontempt = scale(contempt), 
+                    zgrief = scale(grief), 
+                    zfear = scale(fear)
+                )
 ```
 
 ## Explore data
